@@ -10,16 +10,32 @@ export async function createRental(req, res) {
     if (game.rows.length === 0) return res.sendStatus(404)
     const rentDate = new Date().toISOString().split("T")[0]
 
-    const originalPrice = daysRented * gameId.rows[0].pricePerDay
+    const originalPrice = daysRented * game.rows[0].pricePerDay
 
 
-    if (game.rows.length !== 0) return res.sendStatus(409)
+    if (game.rows.length == 0) return res.sendStatus(409)
     try {
         await db.query(`
             INSERT INTO rentals ("customerId","gameId","rentDate","daysRented", "returnDate", "originalPrice", "delayFee")
             VALUES ($1, $2, $3, $4, $5, $6, $7)
         `, [customerId, gameId, rentDate, daysRented, null, originalPrice, null])
         res.sendStatus(201)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+}
+
+export async function getRentals(req, res) {
+    try {
+        const games = await db.query(`
+            SELECT *
+            FROM rentals
+            JOIN customers
+                ON rentals."customerId" = customers.id
+            JOIN games
+                ON rentals."gameId" = games.id
+        `)
+        res.send(games.rows)
     } catch (err) {
         res.status(500).send(err.message)
     }
