@@ -1,7 +1,7 @@
 import { db } from "../database/database.connection.js"
 
 function dateFormat(date) {
-    return date.toLocaleDateString().replaceAll("/", "-")
+    return date.toISOString().split("T")[0]
 }
 
 export async function getCustomers(req, res) {
@@ -24,19 +24,26 @@ export async function getCustomersById(req, res) {
         customers.rows.map(customer => {
             customer.birthday = dateFormat(customer.birthday)
         })
-        res.send(customers.rows)
+        res.send(customers.rows[0])
     } catch (err) {
         res.status(500).send(err.message)
     }
 }
 
 export async function updateCustomer(req, res) {
+    const { id } = req.params
     const { name, phone, cpf, birthday } = req.body
     try {
-        const customers = await db.query(`SELECT * FROM customers WHERE id = $1;`, [id])
-        if (customers.rows.length === 0) return res.sendStatus(404)
-
-        res.send(customers.rows)
+        const customer = await db.query(`
+        SELECT * FROM customers WHERE cpf = $1
+    `, [cpf])
+        if (customer.rows[0].id != id && customer.rows.length !== 0) return res.sendStatus(409)
+        await db.query(`
+            UPDATE customers 
+            SET name = $1, phone = $2, cpf = $3, birthday = $4
+            WHERE id = $5;
+        `, [name, phone, cpf, birthday, id])
+        res.sendStatus(200)
     } catch (err) {
         res.status(500).send(err.message)
     }
